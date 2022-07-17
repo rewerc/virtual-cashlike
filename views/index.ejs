@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/index.css">
+    <title>Home</title>
+</head>
+<body>
+    <div id="top">
+        <h1 class="ta-center">Home</h1>
+        <div id="username-con" class="ta-center">
+            Username: <span id="username"><%= username %></span>
+        </div>
+        <div class="ta-center">
+            Balance: <span id="balance"><%= balance %></span>
+        </div>
+    </div>
+    <div id="content">
+        <div id="wallet-view">
+            <h2>Wallet</h2>
+            <div id="money-summary">
+
+            </div>
+            <div id="wallet">
+
+            </div>
+        </div>
+        <div>
+            <div id="transaction" class="ta-center">
+                <div>
+                    <h2>Transaction</h2>
+                </div>
+                <div id="transaction-inputs">
+                    <div class="ta-left input-labels">
+                        <label for="receiver">Receiver</label>
+                    </div>
+                    <div>
+                        <input type="text" id="receiver">
+                    </div>
+                    <div class="ta-left input-labels">
+                        <label for="amount">Amount</label>
+                    </div>
+                    <div>
+                        <input type="text" id="amount">
+                    </div>
+                    <div class="ta-left input-labels">
+                        <label for="description">Description</label>
+                    </div>
+                    <div>
+                        <input type="text" id="description">
+                    </div>
+                    <div class="ta-left input-labels">
+                        <button id="send">SEND</button>
+                    </div>
+                    <div class="ta-center">
+                        <label id="notification"></label>
+                    </div>
+                </div>
+            </div>
+            <div id="history-view">
+                <div>
+                    <h2 class="ta-center">History</h2>
+                </div>
+                <div id="history">
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        
+        let money = [];
+        let blocks = [];
+        const socket = new WebSocket(location.origin.replace(/^http/, "ws"));
+        const username = "<%= username %>";
+        const balance = document.getElementById("balance");
+        const wallet = document.getElementById("wallet");
+        const historyView = document.getElementById("history");
+        const summary = document.getElementById("money-summary");
+        const notif = document.getElementById("notification");
+        const moneyFractions = [100000, 75000, 50000, 20000, 10000, 5000, 1000, 500, 200, 100];
+
+        function notify(message) {
+            notif.innerHTML = message;
+            setTimeout(() => notif.innerHTML = "", 2500);
+        }
+        
+        function createDiv(string) {
+            const textNode = document.createTextNode(string);
+            const div = document.createElement("div");
+            div.appendChild(textNode);
+            return div;
+        }
+
+        function createElement(element, string) {
+            const textNode = document.createTextNode(string);
+            element = document.createElement(element);
+            element.appendChild(textNode);
+            return element;
+        }
+
+        function addClass(element, classes) {
+            for (const cl of classes) {
+                element.classList.add(cl);
+            }
+            return element;
+        }
+
+        function appendMoney(fr) {
+            let top = createDiv("");
+            top.setAttribute("id", `serial-${fr.serial}`);
+            top.appendChild(createDiv("SERIAL: " + fr.serial));
+            top.appendChild(createDiv("VALUE: " + fr.value));
+            top = addClass(top, ["money-unit"]);
+            wallet.appendChild(top);
+        }
+        
+        function updateSummary() {
+            for (const fr of moneyFractions) {
+                const filtered = money.filter(unit => unit.value === fr);
+                const filteredCount = filtered.reduce((total, cur) => total + 1, 0);
+                document.getElementById(`value-${fr}`).innerHTML = filteredCount;
+            }
+        }
+
+        function displayMoney() {
+            for (const fr of money) {
+                appendMoney(fr);
+            }
+            updateSummary();
+        }
+
+        function appendBlock(block) {
+            const top = addClass(createDiv(""), ["block"]);
+            top.appendChild(createDiv(`HASH: ${block.hash}`));
+            top.appendChild(createDiv(`SENDER: ${block.sender}`));
+            top.appendChild(createDiv(`RECEIVER: ${block.receiver}`));
+            top.appendChild(createDiv(`AMOUNT: ${block.amount}`));
+            top.appendChild(createDiv(`TIMESTAMP: ${block.timestamp}`));
+            historyView.prepend(top);
+        }
+
+        function displayBlocks() {
+            for (const block of blocks) {
+                appendBlock(block);
+            }
+        }
+
+
+        document.getElementById("send").addEventListener("click", function(e) {
+            const receiver = document.getElementById("receiver").value;
+            const amount = parseFloat(document.getElementById("amount").value);
+            const description = document.getElementById("description").value;
+            if (receiver && amount && description && typeof amount === "number" && amount > 0) {
+                this.disabled = true;
+                setTimeout(() => this.disabled = false, 2500)
+                const form = new FormData();
+                form.append("sender", username);
+                form.append("receiver", receiver);
+                form.append("value", amount);
+                form.append("description", description);
+                const xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState == 4 && xhr.status == 200) {
+                        const res = JSON.parse(xhr.responseText);
+                        if (res.type === "failed") notify(res.message);
+                        if (res.type === "success") {
+                            notify(res.message);
+                            balance.innerHTML = res.balance;
+                            blocks.push(res.block);
+                            appendBlock(res.block);
+                            for (const fr of res.sent) {
+                                money = money.filter(unit => unit.serial !== fr.serial);
+                                document.getElementById(`serial-${fr.serial}`).remove();
+                            } 
+                            updateSummary();
+                        }
+                    }
+                }
+                xhr.open("POST", "/send", true);
+                xhr.send(form);
+            }
+        });
+
+        (function () {
+            for (const fr of moneyFractions) {
+                const top = createDiv("");
+                const value = createDiv(`${fr}: `);
+                const span = createElement("span", "");
+                span.setAttribute("id", `value-${fr}`);
+                value.appendChild(span);
+                top.appendChild(value);
+                summary.appendChild(top);
+            }
+            const form = new FormData();
+            form.append("owner", username);
+            const xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.type === "success") {
+                        money = data.money;
+                        blocks = data.blocks;
+                        displayMoney();
+                        displayBlocks();
+                    }
+                }
+            }
+            xhr.open("POST", "/get-initial", true);
+            xhr.send(form);
+        })();
+
+        socket.addEventListener("open", function (event) {
+            console.log("Connected to socket server");
+            socket.send(JSON.stringify({
+                type: "set-id",
+                message: username
+            }));
+        });
+
+        socket.addEventListener("message", function (event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "received") {
+                for (const fr of data.received) {
+                    money.push(fr);
+                    appendMoney(fr);
+                } 
+                balance.innerHTML = parseFloat(balance.innerHTML) + parseFloat(data.added);
+                blocks.push(data.block);
+                appendBlock(data.block);
+                updateSummary();
+                notify(data.message);
+            }
+        });
+    </script>
+</body>
+</html>

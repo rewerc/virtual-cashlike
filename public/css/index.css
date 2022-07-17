@@ -1,0 +1,86 @@
+body {
+    padding: 0;
+    margin: 0;
+    /* overflow-y: hidden; */
+}
+
+h1 {
+    margin: 3px 0;
+}
+
+.ta-center {
+    text-align: center;
+}
+
+.ta-left {
+    text-align: left;
+}
+
+.ta-right {
+    text-align: right;
+}
+
+#transaction {
+    height: 30vh;    
+    overflow-y: auto;
+}
+
+#history-view {
+    height: 62vh;
+}
+
+#history {
+    height: 52vh;
+    overflow-y: auto;
+}
+
+#transaction-inputs {
+    display: grid;
+    grid-template-columns: 30% 70%;
+    width: 50%;
+    margin: 0 auto;
+    column-gap: 30px;
+    row-gap: 10px;
+}
+
+.input-labels {
+    margin-left: 65%;
+}
+
+#content {
+    display: grid;
+    grid-template-columns: 30% 70%;
+    height: 92vh;
+}
+
+#top {
+    height: 8vh;
+}
+
+#wallet-view h2 {
+    height: 5vh;
+    text-align: center;
+}
+
+#wallet {
+    overflow-y: auto;
+    height: 67vh;
+}
+
+.money-unit {
+    padding: 5px;
+    margin: 3px;
+    border: 2px solid black;
+}
+
+#money-summary {
+    padding: 10px;
+    height: 20vh;
+    overflow-y: auto;
+}
+
+.block {
+    margin: 4px 10%;
+    padding: 5px;
+    border: 2px solid black;
+}
